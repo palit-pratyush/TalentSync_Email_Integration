@@ -21,8 +21,8 @@ if not MONGODB_URI:
     raise ValueError("MONGODB_URI not set in environment variables")
 
 client = MongoClient(MONGODB_URI)
-db = client["dummy_db"]
-candidates_collection = db["dummy"]
+db = client["selected_db"]
+candidates_collection = db["selected"]
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
