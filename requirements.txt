@@ -1,6 +1,6 @@
 pymongo
 python-dotenv
-python-multipart==0.0.19
+python-multipart
 fastapi
 jinja2
 pydantic
