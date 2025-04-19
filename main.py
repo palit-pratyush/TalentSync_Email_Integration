@@ -15,12 +15,14 @@ app = FastAPI()
 # Load environment variables
 load_dotenv()
 
-# MongoDB setup (base client)
+# MongoDB setup
 MONGODB_URI = os.getenv("MONGODB_URI")
 if not MONGODB_URI:
     raise ValueError("MONGODB_URI not set in environment variables")
 
 client = MongoClient(MONGODB_URI)
+db = client["dummy_db"]
+candidates_collection = db["dummy"]
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -31,11 +33,6 @@ sender_email = os.getenv("SENDER_EMAIL")
 email_password = os.getenv("EMAIL_PASSWORD")
 if not sender_email or not email_password:
     raise ValueError("SENDER_EMAIL or EMAIL_PASSWORD not set in environment variables")
-
-# Pydantic model for request validation
-class ScheduleRequest(BaseModel):
-    database_name: str
-    collection_name: str
 
 # Generate time slots (9:00 AM to 5:00 PM IST, 30-min intervals)
 def generate_time_slots(start_date):
@@ -49,17 +46,13 @@ def generate_time_slots(start_date):
 
 # Schedule interviews and send emails
 @app.post("/schedule-interviews/")
-async def schedule_interviews(request: ScheduleRequest):
+async def schedule_interviews():
     try:
-        # Connect to the specified database and collection
-        db = client[request.database_name]
-        candidates_collection = db[request.collection_name]
-
         # Fetch all candidates sorted by RANK
         candidates = list(candidates_collection.find().sort("RANK", 1))
         if not candidates:
-            logger.warning(f"No candidates found in {request.database_name}.{request.collection_name}.")
-            return {"message": f"No candidates found in {request.database_name}.{request.collection_name} to schedule interviews."}
+            logger.warning("No candidates found in the database.")
+            return {"message": "No candidates found to schedule interviews."}
 
         logger.info(f"Found candidates: {[cand['NAME'] for cand in candidates]}")
 
@@ -120,7 +113,7 @@ async def schedule_interviews(request: ScheduleRequest):
             except Exception as e:
                 logger.error(f"Failed to send email to {candidate['NAME']} at {candidate['EMAIL']}: {str(e)}")
 
-        return {"message": f"Interviews scheduled and emails sent for {request.database_name}.{request.collection_name}", "scheduled": scheduled_emails}
+        return {"message": "Interviews scheduled and emails sent", "scheduled": scheduled_emails}
 
     except Exception as e:
         logger.error(f"Error scheduling interviews: {str(e)}")
