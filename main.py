@@ -36,7 +36,7 @@ candidates_collection = db["selected"]
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(_name_)
+logger = logging.getLogger(__name__)
 
 # Sender details from environment variables
 sender_email = os.getenv("SENDER_EMAIL")
