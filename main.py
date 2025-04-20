@@ -32,29 +32,35 @@ logger = logging.getLogger(__name__)
 sender_email = os.getenv("SENDER_EMAIL")
 email_password = os.getenv("EMAIL_PASSWORD")
 if not sender_email or not email_password:
-    raise ValueError("SENDER_EMAIL or EMAIL_PASSWORD not set in environment variables")
+    raise ValueError(
+        "SENDER_EMAIL or EMAIL_PASSWORD not set in environment variables")
+
 
 # Generate time slots (9:00 AM to 5:00 PM IST, 30-min intervals)
 def generate_time_slots(start_date):
     slots = []
-    current_time = datetime(start_date.year, start_date.month, start_date.day, 9, 0)  # 9:00 AM IST
-    end_time = datetime(start_date.year, start_date.month, start_date.day, 17, 0)  # 5:00 PM IST
+    current_time = datetime(start_date.year, start_date.month, start_date.day,
+                            9, 0)  # 9:00 AM IST
+    end_time = datetime(start_date.year, start_date.month, start_date.day, 17,
+                        0)  # 5:00 PM IST
     while current_time <= end_time:
         slots.append(current_time.strftime("%Y-%m-%d %H:%M IST"))
         current_time += timedelta(minutes=30)
     return slots
+
 
 # Schedule interviews and send emails
 @app.post("/schedule-interviews/")
 async def schedule_interviews():
     try:
         # Fetch all candidates sorted by RANK
-        candidates = list(candidates_collection.find().sort("RANK", 1))
+        candidates = list(candidates_collection.find().sort("rank", 1))
         if not candidates:
             logger.warning("No candidates found in the database.")
             return {"message": "No candidates found to schedule interviews."}
 
-        logger.info(f"Found candidates: {[cand['NAME'] for cand in candidates]}")
+        logger.info(
+            f"Found candidates: {[cand['name'] for cand in candidates]}")
 
         # Calculate start date (2 days from now, skipping weekends)
         start_date = datetime.now() + timedelta(days=2)
@@ -84,7 +90,7 @@ async def schedule_interviews():
             html = f"""
             <html>
               <body>
-                <p>Dear {candidate['NAME']},</p>
+                <p>Dear {candidate['name']},</p>
                 <p>{text}</p>
                 <p>Please be prepared and join the interview at the scheduled time. Details will follow. Use the following link of chatbot for further queries: https://chatbot-ui-five-cyan-56.vercel.app/</p>
                 <p>Best regards,<br>TalentSync Team</p>
@@ -95,7 +101,7 @@ async def schedule_interviews():
             message = MIMEMultipart("alternative")
             message["Subject"] = subject
             message["From"] = sender_email
-            message["To"] = candidate["EMAIL"]
+            message["To"] = candidate["email"]
 
             part = MIMEText(html, "html")
             message.attach(part)
@@ -103,21 +109,31 @@ async def schedule_interviews():
             try:
                 with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
                     server.login(sender_email, email_password)
-                    server.sendmail(sender_email, candidate["EMAIL"], message.as_string())
-                logger.info(f"Email sent successfully to {candidate['NAME']} at {candidate['EMAIL']} for {interview_time}")
+                    server.sendmail(sender_email, candidate["email"],
+                                    message.as_string())
+                logger.info(
+                    f"Email sent successfully to {candidate['name']} at {candidate['email']} for {interview_time}"
+                )
                 scheduled_emails.append({
-                    "name": candidate["NAME"],
-                    "email": candidate["EMAIL"],
+                    "name": candidate["name"],
+                    "email": candidate["email"],
                     "interview_time": interview_time
                 })
             except Exception as e:
-                logger.error(f"Failed to send email to {candidate['NAME']} at {candidate['EMAIL']}: {str(e)}")
+                logger.error(
+                    f"Failed to send email to {candidate['name']} at {candidate['email']}: {str(e)}"
+                )
 
-        return {"message": "Interviews scheduled and emails sent", "scheduled": scheduled_emails}
+        return {
+            "message": "Interviews scheduled and emails sent",
+            "scheduled": scheduled_emails
+        }
 
     except Exception as e:
         logger.error(f"Error scheduling interviews: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to schedule interviews: {str(e)}")
+        raise HTTPException(status_code=500,
+                            detail=f"Failed to schedule interviews: {str(e)}")
+
 
 # Run the app
 if __name__ == "__main__":
