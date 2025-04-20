@@ -131,6 +131,6 @@ async def schedule_interviews():
         raise HTTPException(status_code=500, detail=f"Failed to schedule interviews: {str(e)}")
 
 # Run the app
-if _name_ == "_main_":
+if _name_ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
