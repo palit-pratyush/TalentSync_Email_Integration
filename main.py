@@ -87,15 +87,17 @@ async def schedule_interviews():
             slot_index += 1
 
             # Create email content
-            subject = "TalentSync Interview Schedule"
-            text = f"This is your interview schedule from TalentSync. Your interview is scheduled for {interview_time}."
+            subject = "Interview Call from NeonAI!!"
             html = f"""
             <html>
               <body>
                 <p>Dear {candidate['name']},</p>
-                <p>{text}</p>
-                <p>Please be prepared and join the interview at the scheduled time. Details will follow. Use the following link of chatbot for further queries: https://chatbot-ui-five-cyan-56.vercel.app/</p>
-                <p>Best regards,<br>TalentSync Team</p>
+                <p>We are pleased to inform you that your interview with NeonAI has been scheduled for {interview_time}.</p>
+                <p>Please ensure you are prepared and join the interview at the scheduled time. Further details regarding the interview process will be provided soon.</p>
+                <p>For any questions or assistance, you may reach out via our chatbot: <a href="https://chatbot-ui-five-cyan-56.vercel.app/">TalentSync Chatbot</a>.</p>
+                <p>We look forward to speaking with you.</p>
+                <p>Best regards,<br>
+                The NeonAI Team</p>
               </body>
             </html>
             """
