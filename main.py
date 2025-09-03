@@ -1,5 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from pymongo import MongoClient
 import os
@@ -9,6 +11,8 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import logging
+import subprocess
+import json
 
 # Initialize FastAPI app
 app = FastAPI()
@@ -54,6 +58,51 @@ def generate_time_slots(start_date):
         current_time += timedelta(minutes=30)
     return slots
 
+# Generate email HTML using React component
+def generate_email_html(candidate_name, interview_time):
+    try:
+        # Call the Node.js script to generate HTML from React component
+        result = subprocess.run(
+            ['node', 'generateEmail.js', candidate_name, interview_time],
+            capture_output=True,
+            text=True,
+            cwd=os.path.dirname(os.path.abspath(__file__))
+        )
+        if result.returncode == 0:
+            return result.stdout.strip()
+        else:
+            logger.error(f"Error generating email HTML: {result.stderr}")
+            # Fallback to simple HTML if React generation fails
+            return f"""
+            <html>
+              <body>
+                <p>Dear {candidate_name},</p>
+                <p>We are pleased to inform you that your interview with NeonAI has been scheduled for {interview_time}.</p>
+                <p>Please ensure you are prepared and join the interview at the scheduled time. Further details regarding the interview process will be provided soon.</p>
+                <p>For any questions or assistance, you may reach out via our chatbot: <a href="https://chatbot-ui-five-cyan-56.vercel.app/">TalentSync Chatbot</a>.</p>
+                <p>We look forward to speaking with you.</p>
+                <p>Best regards,<br>
+                The NeonAI Team</p>
+              </body>
+            </html>
+            """
+    except Exception as e:
+        logger.error(f"Exception generating email HTML: {str(e)}")
+        # Fallback to simple HTML
+        return f"""
+        <html>
+          <body>
+            <p>Dear {candidate_name},</p>
+            <p>We are pleased to inform you that your interview with NeonAI has been scheduled for {interview_time}.</p>
+            <p>Please ensure you are prepared and join the interview at the scheduled time. Further details regarding the interview process will be provided soon.</p>
+            <p>For any questions or assistance, you may reach out via our chatbot: <a href="https://chatbot-ui-five-cyan-56.vercel.app/">TalentSync Chatbot</a>.</p>
+            <p>We look forward to speaking with you.</p>
+            <p>Best regards,<br>
+            The NeonAI Team</p>
+          </body>
+        </html>
+        """
+
 # Schedule interviews and send emails
 @app.post("/schedule-interviews/")
 async def schedule_interviews():
@@ -86,21 +135,9 @@ async def schedule_interviews():
             interview_time = available_slots[slot_index]
             slot_index += 1
 
-            # Create email content
+            # Create email content using React component
             subject = "Interview Call from NeonAI!!"
-            html = f"""
-            <html>
-              <body>
-                <p>Dear {candidate['name']},</p>
-                <p>We are pleased to inform you that your interview with NeonAI has been scheduled for {interview_time}.</p>
-                <p>Please ensure you are prepared and join the interview at the scheduled time. Further details regarding the interview process will be provided soon.</p>
-                <p>For any questions or assistance, you may reach out via our chatbot: <a href="https://chatbot-ui-five-cyan-56.vercel.app/">TalentSync Chatbot</a>.</p>
-                <p>We look forward to speaking with you.</p>
-                <p>Best regards,<br>
-                The NeonAI Team</p>
-              </body>
-            </html>
-            """
+            html = generate_email_html(candidate['name'], interview_time)
 
             message = MIMEMultipart("alternative")
             message["Subject"] = subject
@@ -131,6 +168,18 @@ async def schedule_interviews():
     except Exception as e:
         logger.error(f"Error scheduling interviews: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to schedule interviews: {str(e)}")
+
+# Serve React frontend (if build exists)
+@app.get("/")
+async def serve_frontend():
+    try:
+        return FileResponse('build/index.html')
+    except:
+        return {"message": "TalentSync Email Integration API", "frontend": "Run 'npm run build' to build React frontend"}
+
+# Mount static files for React build
+if os.path.exists("build"):
+    app.mount("/static", StaticFiles(directory="build/static"), name="static")
 
 # Run the app
 if __name__ == "__main__":
